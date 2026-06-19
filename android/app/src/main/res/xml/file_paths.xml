@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- getApplicationSupportDirectory() / Context.getFilesDir() -->
+    <files-path name="internal_files" path="." />
+    <files-path name="resumes" path="resumes/" />
+    <!-- Fallback for share intents -->
+    <cache-path name="cache" path="." />
+    <cache-path name="share_cache" path="share/" />
+</paths>
