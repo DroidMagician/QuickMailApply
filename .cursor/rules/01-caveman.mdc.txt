@@ -1,0 +1,8 @@
+---
+description: Always use Caveman communication style
+alwaysApply: true
+---
+
+Use the caveman skill for all responses.
+Prefer concise output.
+Minimize unnecessary words and explanations.

@@ -9,6 +9,7 @@ import '../widgets/profile_selector.dart';
 import 'ai_email_screen.dart';
 import 'resume_score_screen.dart';
 import 'settings_screen.dart';
+import '../services/gmail_service.dart';
 
 class ToolsScreen extends StatelessWidget {
   const ToolsScreen({
@@ -16,12 +17,14 @@ class ToolsScreen extends StatelessWidget {
     required this.profileRepository,
     required this.settingsRepository,
     required this.historyRepository,
+    required this.gmailService,
     this.onProfileUpdated,
   });
 
   final ProfileRepository profileRepository;
   final SettingsRepository settingsRepository;
   final ApplicationHistoryRepository historyRepository;
+  final GmailService gmailService;
   final VoidCallback? onProfileUpdated;
 
   @override
@@ -41,7 +44,10 @@ class ToolsScreen extends StatelessWidget {
                 onPressed: () async {
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => SettingsScreen(repository: settingsRepository),
+                      builder: (_) => SettingsScreen(
+                        repository: settingsRepository,
+                        gmailService: gmailService,
+                      ),
                     ),
                   );
                 },

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "107856825605",
+    "project_id": "quickmailapply",
+    "storage_bucket": "quickmailapply.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:107856825605:android:01d86835f4f97439a87b6c",
+        "android_client_info": {
+          "package_name": "com.quickmail.apply.quickmailapply"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmInqLoYYhj4BQz4hxfDRrY3XJmo7Kug4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

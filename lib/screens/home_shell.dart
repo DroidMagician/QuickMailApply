@@ -13,6 +13,7 @@ import '../utils/email_validator.dart';
 import 'apply_screen.dart';
 import 'history_screen.dart';
 import 'tools_screen.dart';
+import '../services/gmail_service.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -25,16 +26,19 @@ class _HomeShellState extends State<HomeShell> {
   ProfileRepository? _profileRepository;
   ApplicationHistoryRepository? _historyRepository;
   SettingsRepository? _settingsRepository;
+  late final GmailService _gmailService;
   bool _loading = true;
   int _tabIndex = 0;
   String? _sharedEmail;
   JobPostContext? _jobContext;
   int _applyScreenKey = 0;
   int _toolsRefreshKey = 0;
+  int _historyRefreshKey = 0;
 
   @override
   void initState() {
     super.initState();
+    _gmailService = GmailService();
     _bootstrap();
     ShareIntentService.listen(_handleSharedText);
     IncomingLinkService.listenMailto(_handleMailtoEmail);
@@ -44,6 +48,7 @@ class _HomeShellState extends State<HomeShell> {
   void dispose() {
     ShareIntentService.dispose();
     IncomingLinkService.dispose();
+    _gmailService.dispose();
     super.dispose();
   }
 
@@ -54,6 +59,7 @@ class _HomeShellState extends State<HomeShell> {
     _settingsRepository = SettingsRepository(prefs);
 
     await _profileRepository!.loadProfilesWithMigration();
+    await _gmailService.init();
 
     final mailto = await IncomingLinkService.getInitialMailto();
     final shared = await ShareIntentService.getInitialSharedText();
@@ -162,6 +168,7 @@ class _HomeShellState extends State<HomeShell> {
             profileRepository: _profileRepository!,
             historyRepository: _historyRepository!,
             settingsRepository: _settingsRepository!,
+            gmailService: _gmailService,
             initialEmail: _sharedEmail,
             jobContext: _jobContext,
             onProfilesUpdated: _onProfilesUpdated,
@@ -171,9 +178,12 @@ class _HomeShellState extends State<HomeShell> {
             profileRepository: _profileRepository!,
             settingsRepository: _settingsRepository!,
             historyRepository: _historyRepository!,
+            gmailService: _gmailService,
             onProfileUpdated: _onProfilesUpdated,
           ),
           HistoryScreen(
+            key: ValueKey('history-$_historyRefreshKey'),
+            gmailService: _gmailService,
             historyRepository: _historyRepository!,
             onReapply: _reapplyFromHistory,
           ),
@@ -193,7 +203,14 @@ class _HomeShellState extends State<HomeShell> {
         ),
         child: NavigationBar(
           selectedIndex: _tabIndex,
-          onDestinationSelected: (index) => setState(() => _tabIndex = index),
+          onDestinationSelected: (index) {
+            setState(() {
+              _tabIndex = index;
+              if (index == 2) {
+                _historyRefreshKey++;
+              }
+            });
+          },
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.rocket_launch_outlined),

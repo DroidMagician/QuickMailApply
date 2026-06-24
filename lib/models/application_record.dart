@@ -9,6 +9,11 @@ class ApplicationRecord {
     this.jobTitle,
     this.followUpAt,
     this.followUpCompleted = false,
+    this.gmailMessageId,
+    this.gmailThreadId,
+    this.replyStatus = 'none',
+    this.lastReplySnippet,
+    this.lastCheckedAt,
   });
 
   final String id;
@@ -20,6 +25,11 @@ class ApplicationRecord {
   final String? jobTitle;
   final DateTime? followUpAt;
   final bool followUpCompleted;
+  final String? gmailMessageId;
+  final String? gmailThreadId;
+  final String? replyStatus;
+  final String? lastReplySnippet;
+  final DateTime? lastCheckedAt;
 
   bool get isFollowUpDue {
     if (followUpCompleted || followUpAt == null) return false;
@@ -28,6 +38,9 @@ class ApplicationRecord {
 
   ApplicationRecord copyWith({
     bool? followUpCompleted,
+    String? replyStatus,
+    String? lastReplySnippet,
+    DateTime? lastCheckedAt,
   }) {
     return ApplicationRecord(
       id: id,
@@ -39,6 +52,11 @@ class ApplicationRecord {
       jobTitle: jobTitle,
       followUpAt: followUpAt,
       followUpCompleted: followUpCompleted ?? this.followUpCompleted,
+      gmailMessageId: gmailMessageId,
+      gmailThreadId: gmailThreadId,
+      replyStatus: replyStatus ?? this.replyStatus,
+      lastReplySnippet: lastReplySnippet ?? this.lastReplySnippet,
+      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
     );
   }
 
@@ -52,6 +70,11 @@ class ApplicationRecord {
         'jobTitle': jobTitle,
         'followUpAt': followUpAt?.toIso8601String(),
         'followUpCompleted': followUpCompleted,
+        'gmailMessageId': gmailMessageId,
+        'gmailThreadId': gmailThreadId,
+        'replyStatus': replyStatus,
+        'lastReplySnippet': lastReplySnippet,
+        'lastCheckedAt': lastCheckedAt?.toIso8601String(),
       };
 
   factory ApplicationRecord.fromJson(Map<String, dynamic> json) {
@@ -65,6 +88,11 @@ class ApplicationRecord {
       jobTitle: json['jobTitle'] as String?,
       followUpAt: json['followUpAt'] != null ? DateTime.parse(json['followUpAt'] as String) : null,
       followUpCompleted: json['followUpCompleted'] as bool? ?? false,
+      gmailMessageId: json['gmailMessageId'] as String?,
+      gmailThreadId: json['gmailThreadId'] as String?,
+      replyStatus: json['replyStatus'] as String? ?? 'none',
+      lastReplySnippet: json['lastReplySnippet'] as String?,
+      lastCheckedAt: json['lastCheckedAt'] != null ? DateTime.parse(json['lastCheckedAt'] as String) : null,
     );
   }
 }

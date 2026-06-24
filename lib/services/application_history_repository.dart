@@ -59,6 +59,9 @@ class ApplicationHistoryRepository {
     required String subject,
     String? jobTitle,
     int followUpDays = 5,
+    String? gmailMessageId,
+    String? gmailThreadId,
+    String? replyStatus,
   }) async {
     final record = ApplicationRecord(
       id: _uuid.v4(),
@@ -69,6 +72,9 @@ class ApplicationHistoryRepository {
       appliedAt: DateTime.now(),
       jobTitle: jobTitle,
       followUpAt: DateTime.now().add(Duration(days: followUpDays)),
+      gmailMessageId: gmailMessageId,
+      gmailThreadId: gmailThreadId,
+      replyStatus: replyStatus ?? (gmailThreadId != null ? 'sent' : 'none'),
     );
 
     final history = loadHistory();
@@ -78,6 +84,23 @@ class ApplicationHistoryRepository {
       history.removeRange(_maxRecords, history.length);
     }
 
+    await _save(history);
+  }
+
+  Future<void> updateReplyStatus({
+    required String recordId,
+    required String replyStatus,
+    String? snippet,
+  }) async {
+    final history = loadHistory();
+    final index = history.indexWhere((r) => r.id == recordId);
+    if (index == -1) return;
+
+    history[index] = history[index].copyWith(
+      replyStatus: replyStatus,
+      lastReplySnippet: snippet,
+      lastCheckedAt: DateTime.now(),
+    );
     await _save(history);
   }
 

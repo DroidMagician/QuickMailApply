@@ -14,6 +14,7 @@ import '../widgets/profile_selector.dart';
 import 'ai_email_screen.dart';
 import 'profile_form_screen.dart';
 import 'profiles_screen.dart';
+import '../services/gmail_service.dart';
 
 class ApplyScreen extends StatefulWidget {
   const ApplyScreen({
@@ -21,6 +22,7 @@ class ApplyScreen extends StatefulWidget {
     required this.profileRepository,
     required this.historyRepository,
     required this.settingsRepository,
+    required this.gmailService,
     this.initialEmail,
     this.jobContext,
     this.onProfilesUpdated,
@@ -29,6 +31,7 @@ class ApplyScreen extends StatefulWidget {
   final ProfileRepository profileRepository;
   final ApplicationHistoryRepository historyRepository;
   final SettingsRepository settingsRepository;
+  final GmailService gmailService;
   final String? initialEmail;
   final JobPostContext? jobContext;
   final VoidCallback? onProfilesUpdated;
@@ -43,12 +46,14 @@ class _ApplyScreenState extends State<ApplyScreen> {
   String? _selectedProfileId;
   bool _loading = true;
   bool _applying = false;
+  bool _gmailConnected = false;
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController(text: widget.initialEmail ?? '');
     _bootstrap();
+    widget.gmailService.addListener(_onGmailStatusChanged);
   }
 
   @override
@@ -59,17 +64,37 @@ class _ApplyScreenState extends State<ApplyScreen> {
         widget.initialEmail!.isNotEmpty) {
       _emailController.text = widget.initialEmail!;
     }
+    if (widget.gmailService != oldWidget.gmailService) {
+      oldWidget.gmailService.removeListener(_onGmailStatusChanged);
+      widget.gmailService.addListener(_onGmailStatusChanged);
+      _checkGmailConnection();
+    }
   }
 
   @override
   void dispose() {
     _emailController.dispose();
+    widget.gmailService.removeListener(_onGmailStatusChanged);
     super.dispose();
+  }
+
+  void _onGmailStatusChanged() {
+    _checkGmailConnection();
+  }
+
+  Future<void> _checkGmailConnection() async {
+    final connected = await widget.gmailService.isSignedIn;
+    if (mounted && connected != _gmailConnected) {
+      setState(() {
+        _gmailConnected = connected;
+      });
+    }
   }
 
   Future<void> _bootstrap() async {
     final profiles = await widget.profileRepository.loadProfilesWithMigration();
     final selectedId = widget.profileRepository.loadSelectedProfileId();
+    await _checkGmailConnection();
 
     setState(() {
       _profiles = profiles;
@@ -204,25 +229,56 @@ class _ApplyScreenState extends State<ApplyScreen> {
         }
       }
 
-      await EmailLauncher.openCompose(
-        email: email,
-        subject: profile.subject,
-        body: profile.body,
-        attachmentPath: attachmentPath,
-      );
-      await widget.profileRepository.saveSelectedProfileId(profile.id);
-      await widget.historyRepository.addRecord(
-        recruiterEmail: email,
-        profileId: profile.id,
-        profileName: profile.name,
-        subject: profile.subject,
-        jobTitle: widget.jobContext?.jobTitle,
-        followUpDays: widget.settingsRepository.followUpDays,
-      );
+      if (_gmailConnected) {
+        final result = await widget.gmailService.sendDirectEmail(
+          to: email,
+          subject: profile.subject,
+          body: profile.body,
+          attachmentPath: attachmentPath,
+          attachmentFileName: profile.resumeFileName,
+        );
+
+        await widget.profileRepository.saveSelectedProfileId(profile.id);
+        await widget.historyRepository.addRecord(
+          recruiterEmail: email,
+          profileId: profile.id,
+          profileName: profile.name,
+          subject: profile.subject,
+          jobTitle: widget.jobContext?.jobTitle,
+          followUpDays: widget.settingsRepository.followUpDays,
+          gmailMessageId: result['id'],
+          gmailThreadId: result['threadId'],
+          replyStatus: 'sent',
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Application sent successfully directly via Gmail!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        await EmailLauncher.openCompose(
+          email: email,
+          subject: profile.subject,
+          body: profile.body,
+          attachmentPath: attachmentPath,
+        );
+        await widget.profileRepository.saveSelectedProfileId(profile.id);
+        await widget.historyRepository.addRecord(
+          recruiterEmail: email,
+          profileId: profile.id,
+          profileName: profile.name,
+          subject: profile.subject,
+          jobTitle: widget.jobContext?.jobTitle,
+          followUpDays: widget.settingsRepository.followUpDays,
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(EmailLauncher.friendlyError(error))),
+        SnackBar(content: Text(_gmailConnected ? 'Direct send failed: $error' : EmailLauncher.friendlyError(error))),
       );
     } finally {
       if (mounted) setState(() => _applying = false);
@@ -417,10 +473,35 @@ class _ApplyScreenState extends State<ApplyScreen> {
                       ],
                       const SizedBox(height: 28),
                       PrimaryActionButton(
-                        label: _applying ? EmailLauncher.applyingLabel() : EmailLauncher.applyButtonLabel(),
+                        label: _applying
+                            ? (_gmailConnected ? 'Sending Email…' : EmailLauncher.applyingLabel())
+                            : (_gmailConnected ? 'Apply & Send (1-Tap)' : EmailLauncher.applyButtonLabel()),
                         loading: _applying,
                         onPressed: _applying || profile == null ? null : _apply,
                       ),
+                      if (!_gmailConnected)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Center(
+                            child: TextButton.icon(
+                              onPressed: () async {
+                                final success = await widget.gmailService.signIn();
+                                if (success) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Successfully connected Gmail account')),
+                                  );
+                                  _checkGmailConnection();
+                                }
+                              },
+                              icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                              label: const Text(
+                                'Connect Gmail for 1-tap apply & tracking',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
           ),
